@@ -1,2 +1,6 @@
 venv/
 Data/
+models/
+recordings/
+__pycache__/
+*.pyc

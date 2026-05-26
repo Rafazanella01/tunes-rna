@@ -12,7 +12,8 @@ a entrada da nossa RNA posteriormente.
 
 import pyaudio
 import numpy as np
-import librosa
+
+from audio_features import extract_fingerprint
 
 # --- Configurações de gravação ---
 SAMPLE_RATE = 22050   # Hz (padrão do librosa)
@@ -56,35 +57,18 @@ def record_audio(duration: int, sample_rate: int) -> np.ndarray:
 
 def generate_fingerprint(audio: np.ndarray, sample_rate: int) -> dict:
     """
-    Gera o fingerprint a partir das features acústicas do áudio.
-    
-    Features extraídas:
-    - MFCC (Mel-Frequency Cepstral Coefficients): captura o timbre/textura sonora
-    - Chroma: captura as notas musicais presentes
-    - Spectral Centroid: representa o "brilho" do som
-    
-    O vetor resultante é o que alimentará a RNA.
+    Gera o fingerprint 26-dim do áudio (13 MFCC + 12 Chroma + 1 Centroid).
+
+    A extração foi movida para o módulo `audio_features`, compartilhado com
+    o treino (build_dataset.py) e o reconhecimento (recognize.py) — assim
+    treino e inferência usam exatamente o mesmo pré-processamento.
     """
-    # 1. MFCCs — 13 coeficientes, média ao longo do tempo
-    mfcc = librosa.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=13)
-    mfcc_mean = np.mean(mfcc, axis=1)  # shape: (13,)
-
-    # 2. Chroma STFT — 12 classes de notas (C, C#, D, ...), média ao longo do tempo
-    chroma = librosa.feature.chroma_stft(y=audio, sr=sample_rate)
-    chroma_mean = np.mean(chroma, axis=1)  # shape: (12,)
-
-    # 3. Centroid espectral — média e desvio padrão
-    centroid = librosa.feature.spectral_centroid(y=audio, sr=sample_rate)
-    centroid_mean = float(np.mean(centroid))
-
-    # Vetor final do fingerprint: 13 + 12 + 1 = 26 valores
-    fingerprint_vector = np.concatenate([mfcc_mean, chroma_mean, [centroid_mean]])
-
+    vector = extract_fingerprint(audio, sample_rate)
     return {
-        "mfcc": mfcc_mean,
-        "chroma": chroma_mean,
-        "spectral_centroid": centroid_mean,
-        "vector": fingerprint_vector,
+        "mfcc": vector[:13],
+        "chroma": vector[13:25],
+        "spectral_centroid": float(vector[25]),
+        "vector": vector,
     }
 
 
