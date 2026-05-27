@@ -1,0 +1,6 @@
+kagglehub
+keras
+numpy
+sklearn
+librosa
+matplotlib
