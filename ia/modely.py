@@ -1,5 +1,7 @@
+import os
+
 import numpy as np
-#import tensorflow as tf
+
 import keras
 from keras.layers import Dense, Dropout, BatchNormalization
 from keras.utils import to_categorical
@@ -104,7 +106,7 @@ def _plot_history(hist):
     axes[1].grid(True, alpha=0.3)
  
     plt.tight_layout()
-    plt.savefig("./historico_treino.png", dpi=120, bbox_inches='tight')
+    plt.savefig("./model/historico_treino.png", dpi=120, bbox_inches='tight')
     print("📊 Gráfico salvo: historico_treino.png")
     plt.show()
  
@@ -132,11 +134,12 @@ def _plot_confusion_matrix(y_true, y_pred, class_names):
         ax.set_ylabel("Real")
  
     plt.tight_layout()
-    plt.savefig("./matriz_confusao.png", dpi=120, bbox_inches='tight')
+    plt.savefig("./model/matriz_confusao.png", dpi=120, bbox_inches='tight')
     print("📊 Gráfico salvo: matriz_confusao.png")
     plt.show()
 
-def treinar_rede_neural(file_dataset, camadas_ocultas=None, taxa_aprendizado=None, max_iteracoes=None):
+def treinar_rede_neural(file_dataset, camadas_ocultas=None, taxa_aprendizado=None, max_iteracoes=None, save_path="mlp-model", plot=True):
+    os.makedirs(save_path, exist_ok=True)
     # Carrega os vetores numéricos e o espectrograma real extraído da sua função
     data = np.load(file_dataset)
     mfcc_data, genres_raw = data['mfcc'], data['genres']
@@ -196,16 +199,17 @@ def treinar_rede_neural(file_dataset, camadas_ocultas=None, taxa_aprendizado=Non
     print("="*60)
  
     # ── Salva modelo e scaler ──────────────────
-    model.save("./tunes-rna.keras")
-    with open("./scaler.pkl", "wb") as f:
+    model.save(f"{save_path}/tunes-rna.keras")
+    with open(f"{save_path}/scaler.pkl", "wb") as f:
         pickle.dump(scaler, f)
-    with open("./label_encoder.pkl", "wb") as f:
+    with open(f"{save_path}/label_encoder.pkl", "wb") as f:
         pickle.dump(encoder, f)
  
     print("\n💾 Arquivos salvos: tunes-rna.keras | scaler.pkl | label_encoder.pkl")
  
     # ── Gráficos ───────────────────────────────
-    _plot_history(hist)
-    _plot_confusion_matrix(y_true, y_pred, encoder.classes_)
+    if plot:
+        _plot_history(hist)
+        _plot_confusion_matrix(y_true, y_pred, encoder.classes_)
  
     return model, hist

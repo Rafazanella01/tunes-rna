@@ -10,7 +10,6 @@ import sys
 import pickle
 import numpy as np
 import keras
-import librosa
 
 # Importa a mesma função de extração usada no treino
 # (garante que o vetor de features seja idêntico)
@@ -20,9 +19,9 @@ from process_data import extract_features
 # ─────────────────────────────────────────────
 #  CONFIGURAÇÃO — ajuste se mudou os caminhos
 # ─────────────────────────────────────────────
-MODELO_PATH  = "./tunes-rna.keras"
-SCALER_PATH  = "./scaler.pkl"
-ENCODER_PATH = "./label_encoder.pkl"
+MODELO_PATH  = "./model/tunes-rna.keras"
+SCALER_PATH  = "./model/scaler.pkl"
+ENCODER_PATH = "./model/label_encoder.pkl"
 
 
 # ─────────────────────────────────────────────
@@ -42,7 +41,7 @@ GENRE_EMOJI = {
 }
 
 
-def carregar_modelos():
+def load_model():
     """Carrega modelo, scaler e label encoder do disco."""
     try:
         model   = keras.models.load_model(MODELO_PATH)
@@ -55,7 +54,7 @@ def carregar_modelos():
         sys.exit(1)
 
 
-def prever_genero(audio_path: str, top_k: int = 3):
+def predict_genre(audio_path: str, top_k: int = 3):
     """
     Carrega o áudio, extrai features e retorna as top_k predições.
 
@@ -74,7 +73,7 @@ def prever_genero(audio_path: str, top_k: int = 3):
     print(f"✔  {len(features)} features extraídas")
 
     # ── Pré-processamento ─────────────────────────
-    model, scaler, encoder = carregar_modelos()
+    model, scaler, encoder = load_model()
 
     x = scaler.transform(features.reshape(1, -1))  # (1, n_features)
 
@@ -91,9 +90,9 @@ def prever_genero(audio_path: str, top_k: int = 3):
     return resultados
 
 
-def exibir_resultado(resultados, audio_path: str):
+def show_result(results, audio_path: str):
     """Imprime o resultado de forma legível no terminal."""
-    genero_pred, conf_pred = resultados[0]
+    genero_pred, conf_pred = results[0]
     emoji = GENRE_EMOJI.get(genero_pred, "🎼")
 
     print("\n" + "═"*50)
@@ -104,7 +103,7 @@ def exibir_resultado(resultados, audio_path: str):
     print(f"  Confiança: {conf_pred*100:.1f}%")
     print("─"*50)
     print("  Ranking completo:")
-    for i, (genero, prob) in enumerate(resultados, 1):
+    for i, (genero, prob) in enumerate(results, 1):
         barra = "█" * int(prob * 30)
         print(f"  {i}. {genero:<12} {barra:<30} {prob*100:5.1f}%")
     print("═"*50)
@@ -119,13 +118,17 @@ def exibir_resultado(resultados, audio_path: str):
 #  ENTRY POINT
 # ─────────────────────────────────────────────
 
+def main(audio_path=None):
+    if not audio_path:
+        if len(sys.argv) < 2:
+            print("\nUso: python predict.py <caminho_do_audio>")
+            print("Exemplo: python predict.py musicas/test_rock.wav\n")
+            sys.exit(1)
+        
+        audio_path = sys.argv[1]
+
+    results = predict_genre(audio_path, top_k=3)
+    show_result(results, audio_path)
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("\nUso: python predict.py <caminho_do_audio>")
-        print("Exemplo: python predict.py musicas/test_rock.wav\n")
-        sys.exit(1)
-
-    audio_path = sys.argv[1]
-
-    resultados = prever_genero(audio_path, top_k=3)
-    exibir_resultado(resultados, audio_path)
+    main()

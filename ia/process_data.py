@@ -91,7 +91,6 @@ def extract_features(file_path, sr=22050, n_mfcc=40, duration=30):
 
     return np.array(features, dtype=np.float32)
 
-
 def process_all_dataset(base_dir):
     print("🎵 Iniciando extração de features do dataset...\n")
 
@@ -124,14 +123,16 @@ def process_all_dataset(base_dir):
 
     return np.array(x_features), np.array(y_genres)
 
+def main(dataset_path=None):
+    if not dataset_path:
+        dataset_path = "./datasets/gtzan-data/genres_original"
 
-if __name__ == "__main__":
-    CAMINHO_DATASET = "./datasets/gtzan-data/genres_original"
-
-    x, y = process_all_dataset(CAMINHO_DATASET)
-
+    x, y = process_all_dataset(dataset_path)
     print(f"\n📐 Shape das features: {x.shape}")
     print(f"🏷️  Gêneros únicos:     {np.unique(y)}")
 
     np.savez_compressed("./datasets/dados_treino.npz", mfcc=x, genres=y)
     print("\n✅ 'dados_treino.npz' gerado com sucesso!")
+
+if __name__ == "__main__":
+    main()
