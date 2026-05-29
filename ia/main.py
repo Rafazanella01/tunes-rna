@@ -35,8 +35,9 @@ try:
             predict.main(f"./songs/{fsongs[file_index]}")
     
     elif choose == 3:
-        base_dir_dataset = "./datasets/" + input("Nome da pasta do dataset: ./datasets/")
-        process_data.process_all_dataset(base_dir_dataset)
+        input_path = input("Nome da pasta do dataset: ./datasets/")
+        base_dir_dataset = f"./datasets/{input_path}" if input_path else None 
+        process_data.main(base_dir_dataset)
 
     else:
         raise Exception
