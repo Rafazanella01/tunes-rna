@@ -2,11 +2,18 @@ import os
 import librosa
 import numpy as np
 
+from augmentation import augmentar
+
 # ─────────────────────────────────────────────
 #  EXTRAÇÃO DE FEATURES
 # ─────────────────────────────────────────────
 
 def extract_features(file_path, sr=22050, n_mfcc=40, duration=30):
+    """Carrega o arquivo e extrai features. Usada pelo predict.py."""
+    y, _ = librosa.load(file_path, sr=sr, duration=duration)
+    return extract_features_from_signal(y, sr, n_mfcc)
+ 
+def extract_features_from_signal(y, sr=22050, n_mfcc=40):
     """
     Extrai um vetor de dados rico para classificação de gênero musical.
 
@@ -24,17 +31,14 @@ def extract_features(file_path, sr=22050, n_mfcc=40, duration=30):
     ─────────────────────────────────────────────────────────────
     Total: ~301 dados
     """
-
-    y, _ = librosa.load(file_path, sr=sr, duration=duration)
-
     # Garante tamanho fixo: preenche silêncio se o áudio for curto
-    target_len = int(sr * duration)
+    target_len = int(sr * 30)
     y = librosa.util.fix_length(y, size=target_len)
 
     features = []
 
     # ── 1. MFCC (40 coeficientes) + delta + delta² ──
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
+    mfcc        = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
     delta_mfcc  = librosa.feature.delta(mfcc)
     delta2_mfcc = librosa.feature.delta(mfcc, order=2)
 
@@ -91,30 +95,47 @@ def extract_features(file_path, sr=22050, n_mfcc=40, duration=30):
 
     return np.array(features, dtype=np.float32)
 
-def process_all_dataset(base_dir):
+def process_all_dataset(base_dir, usar_augmentation=True):
     print("🎵 Iniciando extração de features do dataset...\n")
-
-    x_features = []
+    if usar_augmentation:
+        print("🔀 Data Augmentation: ATIVADA  (original + 5 variações = 6x)\n")
+    else:
+        print("🔀 Data Augmentation: DESATIVADA\n")
+    
+    x_features  = []
     y_genres    = []
+    sr          = 22050
 
-    generos = sorted([
+    genres = sorted([
         g for g in os.listdir(base_dir)
         if os.path.isdir(os.path.join(base_dir, g))
     ])
 
-    for genre in generos:
-        genre_path = os.path.join(base_dir, genre)
+    for g in genres:
+        genre_path = os.path.join(base_dir, g)
         arquivos   = [f for f in os.listdir(genre_path) if f.endswith('.wav')]
 
-        print(f"📁 Gênero: {genre:<12} ({len(arquivos)} arquivos)")
+        print(f"📁 Gênero: {g:<12} ({len(arquivos)} arquivos)")
 
         for file in arquivos:
             caminho_audio = os.path.join(genre_path, file)
             try:
-                feat = extract_features(caminho_audio, duration=30)
-                x_features.append(feat)
-                y_genres.append(genre)
-                print(f"   ✔ {file}  →  {len(feat)} features")
+                # Carrega o sinal UMA SÓ VEZ para original + variações
+                y, _ = librosa.load(caminho_audio, sr=sr, duration=30)
+ 
+                # ── Original ──────────────────────────────
+                x_features.append(extract_features_from_signal(y, sr))
+                y_genres.append(g)
+ 
+                # ── Variações aumentadas ──────────────────
+                if usar_augmentation:
+                    variacoes = augmentar(y, sr)
+                    for y_aug in variacoes:
+                        x_features.append(extract_features_from_signal(y_aug, sr))
+                        y_genres.append(g)
+ 
+                n = 1 + (len(variacoes) if usar_augmentation else 0)
+                print(f"   ✔ {file}  →  {n} amostras")
 
             except Exception as e:
                 print(f"   ✘ Erro em {file}: {e}")
@@ -126,7 +147,9 @@ def process_all_dataset(base_dir):
 def main(dataset_path=None):
     if not dataset_path:
         dataset_path = "./datasets/gtzan-data/genres_original"
-
+    
+    print(dataset_path)
+    
     x, y = process_all_dataset(dataset_path)
     print(f"\n📐 Shape das features: {x.shape}")
     print(f"🏷️  Gêneros únicos:     {np.unique(y)}")
