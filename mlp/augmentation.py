@@ -1,10 +1,3 @@
-"""
-augmentation.py — Técnicas de Data Augmentation para áudio.
-
-Cada função recebe um sinal de áudio (y, sr) e retorna
-uma lista de variações do mesmo sinal — sem alterar o gênero.
-"""
-
 import numpy as np
 import librosa
 
@@ -43,8 +36,8 @@ def augmentar(y, sr):
     """
     Aplica todas as técnicas e retorna lista com todas as variações.
 
-    Entrada : sinal original (1 amostra)
-    Saída   : array de sinais aumentados (5 amostras)
+    Entrada : audio original (1 amostra)
+    Saída   : array de dados aumentados (5 amostras)
 
     Total com original = 6x o dataset original.
     """

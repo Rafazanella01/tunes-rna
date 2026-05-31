@@ -4,3 +4,4 @@ numpy
 sklearn
 librosa
 matplotlib
+pyaudio

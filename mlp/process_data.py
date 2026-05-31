@@ -4,10 +4,6 @@ import numpy as np
 
 from .augmentation import augmentar
 
-# ─────────────────────────────────────────────
-#  EXTRAÇÃO DE FEATURES
-# ─────────────────────────────────────────────
-
 def extract_features(file_path, sr=22050, n_mfcc=40, duration=30):
     """Carrega o arquivo e extrai features. Usada pelo predict.py."""
     y, _ = librosa.load(file_path, sr=sr, duration=duration)
@@ -16,6 +12,10 @@ def extract_features(file_path, sr=22050, n_mfcc=40, duration=30):
 def extract_features_from_signal(y, sr=22050, n_mfcc=40):
     """
     Extrai um vetor de dados rico para classificação de gênero musical.
+
+    y      = data, audio
+    sr     = nr de amostrar por seg da musica
+    n_mfcc = nr de coeficientes.
 
     Dados extraídos:
       - MFCC (40 coef)  + delta + delta-delta   → mean+std = 240
@@ -31,65 +31,63 @@ def extract_features_from_signal(y, sr=22050, n_mfcc=40):
     ─────────────────────────────────────────────────────────────
     Total: ~301 dados
     """
-    # Garante tamanho fixo: preenche silêncio se o áudio for curto
+    # Preenche silêncio se o áudio for curto
     target_len = int(sr * 30)
     y = librosa.util.fix_length(y, size=target_len)
 
     features = []
 
-    # ── 1. MFCC (40 coeficientes) + delta + delta² ──
+    # MFCC (40 coeficientes) + delta + delta²
     mfcc        = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
-    delta_mfcc  = librosa.feature.delta(mfcc)
-    delta2_mfcc = librosa.feature.delta(mfcc, order=2)
+    delta_mfcc  = librosa.feature.delta(mfcc)           # variação entre frames
+    delta2_mfcc = librosa.feature.delta(mfcc, order=2)  # variação da variação. ficando maior ou menor.
 
     for mat in [mfcc, delta_mfcc, delta2_mfcc]:
         features.extend(np.mean(mat, axis=1))
         features.extend(np.std(mat,  axis=1))
 
-    # ── 2. Chroma STFT ──────────────────────────────
+    # Chroma STFT (Notas Dó, Ré, Mi...)
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
     features.extend(np.mean(chroma, axis=1))
     features.extend(np.std(chroma,  axis=1))
 
-    # ── 3. Spectral Contrast ────────────────────────
+    # Spectral Contrast
     contrast = librosa.feature.spectral_contrast(y=y, sr=sr)
     features.extend(np.mean(contrast, axis=1))
     features.extend(np.std(contrast,  axis=1))
 
-    # ── 4. Centroide Espectral ──────────────────────
+    # Centroide Espectral 
     centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
     features.append(np.mean(centroid))
     features.append(np.std(centroid))
 
-    # ── 5. Largura de Banda Espectral ───────────────
+    # Largura de Banda Espectral
     bandwidth = librosa.feature.spectral_bandwidth(y=y, sr=sr)
     features.append(np.mean(bandwidth))
     features.append(np.std(bandwidth))
 
-    # ── 6. Rolloff Espectral ────────────────────────
+    # Rolloff Espectral
     rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
     features.append(np.mean(rolloff))
     features.append(np.std(rolloff))
 
-    # ── 7. Zero Crossing Rate ───────────────────────
+    # Zero Crossing Rate
     zcr = librosa.feature.zero_crossing_rate(y)
     features.append(np.mean(zcr))
     features.append(np.std(zcr))
 
-    # ── 8. RMS Energy ───────────────────────────────
+    # RMS Energy (Volume médio)
     rms = librosa.feature.rms(y=y)
     features.append(np.mean(rms))
     features.append(np.std(rms))
 
-    # ── 9. Tonnetz ──────────────────────────────────
-    # Captura relações harmônicas e de afinação
+    # Tonnetz
     y_harm = librosa.effects.harmonic(y)
     tonnetz = librosa.feature.tonnetz(y=y_harm, sr=sr)
     features.extend(np.mean(tonnetz, axis=1))
     features.extend(np.std(tonnetz,  axis=1))
 
-    # ── 10. Tempo (BPM) ─────────────────────────────
-    # librosa >= 0.10 retorna tempo como array (1,) em vez de escalar
+    # BPM
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
     features.append(float(np.atleast_1d(tempo)[0]))
 
@@ -123,11 +121,11 @@ def process_all_dataset(base_dir, augmentation=True):
                 # Carrega o audio UMA SÓ VEZ para original + variações
                 y, _ = librosa.load(caminho_audio, sr=sr, duration=30)
  
-                # ── Original ──────────────────────────────
+                # Original
                 x_features.append(extract_features_from_signal(y, sr))
                 y_genres.append(g)
  
-                # ── Variações aumentadas ──────────────────
+                # Variações aumentadas
                 if augmentation:
                     variacoes = augmentar(y, sr)
                     for y_aug in variacoes:

@@ -11,22 +11,11 @@ import pickle
 import numpy as np
 import keras
 
-# Importa a mesma função de extração usada no treino
-# (garante que o vetor de features seja idêntico)
 from .process_data import extract_features
 
-
-# ─────────────────────────────────────────────
-#  CONFIGURAÇÃO — ajuste se mudou os caminhos
-# ─────────────────────────────────────────────
 MODELO_PATH  = "./model/tunes-rna.keras"
 SCALER_PATH  = "./model/scaler.pkl"
 ENCODER_PATH = "./model/label_encoder.pkl"
-
-
-# ─────────────────────────────────────────────
-#  EMOJIS POR GÊNERO (visual)
-# ─────────────────────────────────────────────
 GENRE_EMOJI = {
     "blues":     "🎸",
     "classical": "🎻",
@@ -48,6 +37,7 @@ def load_model():
         with open(SCALER_PATH,  "rb") as f: scaler  = pickle.load(f)
         with open(ENCODER_PATH, "rb") as f: encoder = pickle.load(f)
         return model, scaler, encoder
+    
     except FileNotFoundError as e:
         print(f"\n❌ Arquivo não encontrado: {e}")
         print("   Execute processamento.py e modely.py antes de usar predict.py.")
@@ -63,7 +53,7 @@ def predict_genre(audio_path: str, top_k: int = 3):
     """
     print(f"\n🎵 Carregando áudio: {audio_path}")
 
-    # ── Features ─────────────────────────────────
+    # Features
     try:
         features = extract_features(audio_path, duration=60)
     except Exception as e:
@@ -72,13 +62,10 @@ def predict_genre(audio_path: str, top_k: int = 3):
 
     print(f"✔  {len(features)} features extraídas")
 
-    # ── Pré-processamento ─────────────────────────
     model, scaler, encoder = load_model()
+    x = scaler.transform(features.reshape(1, -1))
 
-    x = scaler.transform(features.reshape(1, -1))  # (1, n_features)
-
-    # ── Predição ──────────────────────────────────
-    probs = model.predict(x, verbose=0)[0]          # array de probabilidades
+    probs = model.predict(x, verbose=0)[0]
 
     # Ordena decrescentemente e pega top_k
     indices_ordenados = np.argsort(probs)[::-1][:top_k]
@@ -109,14 +96,10 @@ def show_result(results, audio_path: str):
     print("═"*50)
 
     # Aviso se a confiança for baixa
-    if conf_pred < 0.40:
+    if conf_pred < 0.50:
         print("\n  ⚠️  Confiança baixa — o áudio pode ser atípico")
         print("     ou de um gênero pouco representado no dataset.\n")
 
-
-# ─────────────────────────────────────────────
-#  ENTRY POINT
-# ─────────────────────────────────────────────
 
 def main(audio_path=None):
     if not audio_path:

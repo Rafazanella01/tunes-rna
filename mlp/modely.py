@@ -44,16 +44,28 @@ def build_model(num_attributes, num_classes, dropout_rate=0.4, l2_reg=1e-4):
         Dense(num_classes, activation='softmax')
     ])
 
+    # BatchNormalization: normaliza os numéros entre cada camada, para evitar valores muito fora.
+    # DropOut: Durante o treino, desliga aleatoriamento a quantidade passada para todos neurônios "aprenderem".
+    # Kernel_Regularizer: Penaliza pesos muito grandes, evita de um só neurônio dominar.
+    # Activation ReLU: Função que decide se o neurônio ativa ou não. 0>n -> 0 não ativa. 0<n ativa.
+    # Softmax tranforma os valores em porcentagens. 
+
     model.compile(
-        optimizer=Adam(learning_rate=3e-4),
+        optimizer=Adam(learning_rate=3e-4), # 0,0003
         loss='categorical_crossentropy',
         metrics=['accuracy', keras.metrics.F1Score(average="macro")]
     )
+
+    # categorical_crossentropy: calc quão errado está... pune mais quando erra com certeza
+    # accuracy: % de acertos simples.
+    # F1Score: media de precision e recall. 
 
     return model
 
 
 def get_callbacks():
+    # earlystopping: para de treinar quando não tem avanço.
+    # reducelronplateau: reduz o learning rate quando não tem avanço. 
     return [
         EarlyStopping(monitor='val_loss', patience=25, restore_best_weights=True, verbose=0),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6, verbose=0)
@@ -65,34 +77,31 @@ def get_callbacks():
 # ─────────────────────────────────────────────
 
 def train_rna(file_dataset, n_folds=5, save_path="model", plot=True):
-    # ── Carrega dados ──────────────────────────────────────────────
+    # Carrega dados
     data = np.load(file_dataset)
     mfcc, genres_raw = data['mfcc'], data['genres']
 
     print(f"📦 Dataset: {mfcc.shape[0]} amostras, {mfcc.shape[1]} features")
     # .shape[0] -> linhas
     # .shape[1] -> colunas
-    # ── Encoding ───────────────────────────────────────────────────
+    
+    # Encoding 
     encoder    = LabelEncoder()
     labels_int = encoder.fit_transform(genres_raw)   # ex: [0,1,2,...] (inteiros)
     labels_cat = to_categorical(labels_int)          # transforma para binário (000, 001, 010...)
     num_classes    = labels_cat.shape[1]
     num_attributes = mfcc.shape[1]
 
-    print(f"🏷️  Classes ({num_classes}): {list(encoder.classes_)}")
+    print(f"🏷️ Classes ({num_classes}): {list(encoder.classes_)}")
     print(f"📐 Folds: {n_folds}  →  ~{len(mfcc)//n_folds} amostras por fold\n")
 
-    # ─────────────────────────────────────────────────────────────
-    #  StratifiedKFold garante proporção igual de cada gênero
-    #  em todos os folds — crucial com 100 amostras por classe.
-    # ─────────────────────────────────────────────────────────────
+    # StratifiedKFold garante proporção igual de cada gênero em todos os folds
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
 
     historicos      = []   # histórico de cada fold
     accuracy        = []   # val_accuracy de cada fold
     f1s             = []   # val_f1 de cada fold
 
-    # Acumula predições de todos os folds para a matriz de confusão final
     y_true_total = []
     y_pred_total = []
 
@@ -100,7 +109,7 @@ def train_rna(file_dataset, n_folds=5, save_path="model", plot=True):
     melhor_modelo = None
     melhor_scaler = None
 
-    # ── Loop K-Fold ────────────────────────────────────────────────
+    # Loop KFold
     for fold, (idx_treino, idx_val) in enumerate(skf.split(mfcc, labels_int), start=1):
 
         print("─" * 60)
@@ -112,13 +121,12 @@ def train_rna(file_dataset, n_folds=5, save_path="model", plot=True):
         x_treino, x_val = mfcc[idx_treino], mfcc[idx_val]
         y_treino, y_val = labels_cat[idx_treino], labels_cat[idx_val]
 
-        # ── Scaler treinado APENAS nos dados de treino do fold ──────
-        # (vazamento de dados se fit_transform no dataset inteiro!)
+        # Treinado APENAS nos dados de treino do fold
         scaler = StandardScaler()
         x_treino_s = scaler.fit_transform(x_treino)
         x_val_s    = scaler.transform(x_val)
 
-        # ── Modelo novo a cada fold ─────────────────────────────────
+        # Modelo novo a cada fold
         model = build_model(num_attributes, num_classes)
 
         hist = model.fit(
@@ -130,7 +138,6 @@ def train_rna(file_dataset, n_folds=5, save_path="model", plot=True):
             verbose=1
         )
 
-        # ── Métricas do fold ────────────────────────────────────────
         val_acc = max(hist.history['val_accuracy'])
         val_f1  = max(hist.history['val_f1_score']) if 'val_f1_score' in hist.history else 0.0
 
@@ -147,13 +154,13 @@ def train_rna(file_dataset, n_folds=5, save_path="model", plot=True):
 
         print(f"\n  ✔ Fold {fold} → val_accuracy: {val_acc*100:.2f}%  |  val_f1: {val_f1*100:.2f}%\n")
 
-        # Guarda o melhor modelo entre os folds
+        # Melhor modelo entre os folds
         if val_acc > melhor_acc:
             melhor_acc    = val_acc
             melhor_modelo = model
             melhor_scaler = scaler
 
-    # ── Resultado final ────────────────────────────────────────────
+    # Resultado
     print("\n" + "=" * 60)
     print("              RESULTADO FINAL — K-FOLD")
     print("=" * 60)
@@ -166,7 +173,7 @@ def train_rna(file_dataset, n_folds=5, save_path="model", plot=True):
     print("\n📋 Relatório consolidado (todas as predições dos folds):")
     print(classification_report(y_true_total, y_pred_total, target_names=encoder.classes_))
 
-    # ── Salva o melhor modelo ──────────────────────────────────────
+    # Salva o modelo
     melhor_modelo.save(f"./{save_path}/tunes-rna.keras")
     with open(f"./{save_path}/scaler.pkl",        "wb") as f: pickle.dump(melhor_scaler, f)
     with open(f"./{save_path}/label_encoder.pkl", "wb") as f: pickle.dump(encoder,       f)
@@ -174,7 +181,6 @@ def train_rna(file_dataset, n_folds=5, save_path="model", plot=True):
     print("💾 Melhor modelo salvo: tunes-rna.keras | scaler.pkl | label_encoder.pkl")
 
     if plot:
-        # ── Gráficos ───────────────────────────────────────────────────
         _plot_kfold_accuracy(accuracy)
         _plot_histories(historicos)
         _plot_confusion_matrix(y_true_total, y_pred_total, encoder.classes_)
@@ -245,11 +251,6 @@ def _plot_confusion_matrix(y_true, y_pred, class_names):
     plt.savefig("./model/matriz_confusao.png", dpi=120, bbox_inches='tight')
     print("📊 matriz_confusao.png")
     plt.show()
-
-
-# ─────────────────────────────────────────────
-#  ENTRY POINT
-# ─────────────────────────────────────────────
 
 if __name__ == "__main__":
     train_rna("./datasets/train_data.npz", n_folds=5)
