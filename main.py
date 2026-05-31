@@ -7,9 +7,7 @@ import tensorflow as tf
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
-import modely
-import predict
-import process_data
+from mlp import modely, predict, process_data
 
 print("""
 SELECIONE A OPÇÃO:
@@ -21,9 +19,17 @@ try:
     choose = int(input(""))
     print("-"*60)
 
+    # Treinar modelo
     if choose == 1:
-        modely.treinar_rede_neural("./datasets/dados_treino.npz")
+        npz   = [n for n in os.listdir("datasets") if n.endswith(".npz")]
+        for i, f in enumerate(npz):
+            print(f" {i}: {f}")
 
+        file_index = int(input("\nEscolha um arquivo de processamento: "))
+
+        modely.train_rna(f"./datasets/{npz[file_index]}")
+
+    # Executar modelo
     elif choose == 2:
         fsongs   = [f for f in os.listdir("songs")]
         for i, s in enumerate(fsongs):
@@ -34,12 +40,16 @@ try:
         if file_index <= i+1:
             predict.main(f"./songs/{fsongs[file_index]}")
     
+    # Processar datasets
     elif choose == 3:
         input_path = input("Nome da pasta do dataset: ./datasets/")
         base_dir_dataset = f"./datasets/{input_path}" if input_path else None 
-        process_data.main(base_dir_dataset)
+        aug = int(input("Usar augmentation para aumentar as informações? (1 - True, 0 - False) -> "))
+        
+        process_data.main(base_dir_dataset, augmentation=aug)
 
     else:
         raise Exception
+    
 except Exception as e:
     print(f"Escolha inexistente! {e}")

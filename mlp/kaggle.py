@@ -17,3 +17,5 @@ def fma(path_download):
     print("Path to dataset files:", path)
 
 #path = kagglehub.dataset_download("iamsouravbanerjee/music-genre-classification-dataset-fma")
+
+# gtzan(./datasets/gtzan-data)

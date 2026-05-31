@@ -13,7 +13,7 @@ import keras
 
 # Importa a mesma função de extração usada no treino
 # (garante que o vetor de features seja idêntico)
-from process_data import extract_features
+from .process_data import extract_features
 
 
 # ─────────────────────────────────────────────

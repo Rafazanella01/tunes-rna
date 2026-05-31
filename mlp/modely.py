@@ -64,7 +64,7 @@ def get_callbacks():
 #  TREINAMENTO COM K-FOLD
 # ─────────────────────────────────────────────
 
-def treinar_rede_neural(file_dataset, n_folds=5, save_path="model", plot=True):
+def train_rna(file_dataset, n_folds=5, save_path="model", plot=True):
     # ── Carrega dados ──────────────────────────────────────────────
     data = np.load(file_dataset)
     mfcc, genres_raw = data['mfcc'], data['genres']
@@ -89,7 +89,7 @@ def treinar_rede_neural(file_dataset, n_folds=5, save_path="model", plot=True):
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
 
     historicos      = []   # histórico de cada fold
-    accuracy       = []   # val_accuracy de cada fold
+    accuracy        = []   # val_accuracy de cada fold
     f1s             = []   # val_f1 de cada fold
 
     # Acumula predições de todos os folds para a matriz de confusão final
@@ -175,7 +175,7 @@ def treinar_rede_neural(file_dataset, n_folds=5, save_path="model", plot=True):
 
     if plot:
         # ── Gráficos ───────────────────────────────────────────────────
-        _plot_kfold_accuracy(acuracias)
+        _plot_kfold_accuracy(accuracy)
         _plot_histories(historicos)
         _plot_confusion_matrix(y_true_total, y_pred_total, encoder.classes_)
 
@@ -186,31 +186,31 @@ def treinar_rede_neural(file_dataset, n_folds=5, save_path="model", plot=True):
 #  VISUALIZAÇÕES
 # ─────────────────────────────────────────────
 
-def _plot_kfold_accuracy(acuracias):
+def _plot_kfold_accuracy(accuracy):
     """Barra com a acurácia de cada fold + linha da média."""
     fig, ax = plt.subplots(figsize=(8, 4))
-    folds = [f"Fold {i+1}" for i in range(len(acuracias))]
-    bars  = ax.bar(folds, [a*100 for a in acuracias], color='steelblue', alpha=0.8)
-    media = np.mean(acuracias) * 100
+    folds = [f"Fold {i+1}" for i in range(len(accuracy))]
+    bars  = ax.bar(folds, [a*100 for a in accuracy], color='steelblue', alpha=0.8)
+    media = np.mean(accuracy) * 100
     ax.axhline(media, color='tomato', linestyle='--', linewidth=1.5, label=f'Média: {media:.1f}%')
     ax.set_ylabel("Val Accuracy (%)")
     ax.set_title("Acurácia por Fold — K-Fold Cross Validation")
     ax.set_ylim(0, 100)
     ax.legend()
-    for bar, acc in zip(bars, acuracias):
+    for bar, acc in zip(bars, accuracy):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
                 f'{acc*100:.1f}%', ha='center', va='bottom', fontsize=9)
     plt.tight_layout()
-    plt.savefig("./model/kfold_acuracias.png", dpi=120, bbox_inches='tight')
-    print("📊 kfold_acuracias.png")
+    plt.savefig("./model/kfold_accuracy.png", dpi=120, bbox_inches='tight')
+    print("📊 kfold_accuracy.png")
     plt.show()
 
-def _plot_histories(historicos):
+def _plot_histories(history):
     """Curvas de loss de todos os folds sobrepostas."""
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     fig.suptitle("Histórico de Treino — Todos os Folds", fontsize=13)
 
-    for i, hist in enumerate(historicos):
+    for i, hist in enumerate(history):
         label = f"Fold {i+1}"
         axes[0].plot(hist.history['val_accuracy'], label=label, alpha=0.75)
         axes[1].plot(hist.history['val_loss'],     label=label, alpha=0.75)
@@ -221,8 +221,8 @@ def _plot_histories(historicos):
         ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig("./model/historico_folds.png", dpi=120, bbox_inches='tight')
-    print("📊 historico_folds.png")
+    plt.savefig("./model/history_folds.png", dpi=120, bbox_inches='tight')
+    print("📊 history_folds.png")
     plt.show()
 
 def _plot_confusion_matrix(y_true, y_pred, class_names):
@@ -252,4 +252,4 @@ def _plot_confusion_matrix(y_true, y_pred, class_names):
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-    treinar_rede_neural("./datasets/dados_treino.npz", n_folds=5)
+    train_rna("./datasets/train_data.npz", n_folds=5)

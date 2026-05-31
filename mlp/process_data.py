@@ -2,7 +2,7 @@ import os
 import librosa
 import numpy as np
 
-from augmentation import augmentar
+from .augmentation import augmentar
 
 # ─────────────────────────────────────────────
 #  EXTRAÇÃO DE FEATURES
@@ -95,9 +95,9 @@ def extract_features_from_signal(y, sr=22050, n_mfcc=40):
 
     return np.array(features, dtype=np.float32)
 
-def process_all_dataset(base_dir, usar_augmentation=True):
+def process_all_dataset(base_dir, augmentation=True):
     print("🎵 Iniciando extração de features do dataset...\n")
-    if usar_augmentation:
+    if augmentation:
         print("🔀 Data Augmentation: ATIVADA  (original + 5 variações = 6x)\n")
     else:
         print("🔀 Data Augmentation: DESATIVADA\n")
@@ -120,7 +120,7 @@ def process_all_dataset(base_dir, usar_augmentation=True):
         for file in arquivos:
             caminho_audio = os.path.join(genre_path, file)
             try:
-                # Carrega o sinal UMA SÓ VEZ para original + variações
+                # Carrega o audio UMA SÓ VEZ para original + variações
                 y, _ = librosa.load(caminho_audio, sr=sr, duration=30)
  
                 # ── Original ──────────────────────────────
@@ -128,13 +128,13 @@ def process_all_dataset(base_dir, usar_augmentation=True):
                 y_genres.append(g)
  
                 # ── Variações aumentadas ──────────────────
-                if usar_augmentation:
+                if augmentation:
                     variacoes = augmentar(y, sr)
                     for y_aug in variacoes:
                         x_features.append(extract_features_from_signal(y_aug, sr))
                         y_genres.append(g)
  
-                n = 1 + (len(variacoes) if usar_augmentation else 0)
+                n = 1 + (len(variacoes) if augmentation else 0)
                 print(f"   ✔ {file}  →  {n} amostras")
 
             except Exception as e:
@@ -144,13 +144,13 @@ def process_all_dataset(base_dir, usar_augmentation=True):
 
     return np.array(x_features), np.array(y_genres)
 
-def main(dataset_path=None):
+def main(dataset_path=None, augmentation=True):
     if not dataset_path:
         dataset_path = "./datasets/gtzan-data/genres_original"
     
     print(dataset_path)
     
-    x, y = process_all_dataset(dataset_path)
+    x, y = process_all_dataset(dataset_path, augmentation)
     print(f"\n📐 Shape das features: {x.shape}")
     print(f"🏷️  Gêneros únicos:     {np.unique(y)}")
 
