@@ -1,2 +1,8 @@
-venv/
-Data/
+*venv*
+__pycache__
+*datasets/*
+*datasets\*
+*.keras
+*.pkl
+*model/*
+*model\*
