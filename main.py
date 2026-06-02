@@ -11,16 +11,24 @@ from mlp import modely, predict, process_data
 
 print("""
 SELECIONE A OPÇÃO:
-      1 - Treinar modelo
-      2 - Executar modelo
-      3 - Processar novos datasets\n--> """,end="")
+      1 - Processar novos datasets
+      2 - Treinar modelo
+      3 - Executar modelo\n--> """,end="")
 
 try:
     choose = int(input(""))
     print("-"*60)
 
-    # Treinar modelo
+    # Processar datasets
     if choose == 1:
+        input_path = input("Nome da pasta do dataset: ./datasets/")
+        base_dir_dataset = f"./datasets/{input_path}" if input_path else None 
+        aug = int(input("Usar augmentation para aumentar as informações? (1 - True, 0 - False) -> "))
+        
+        process_data.main(base_dir_dataset, augmentation=aug)
+
+    # Treinar modelo
+    elif choose == 2:
         npz   = [n for n in os.listdir("datasets") if n.endswith(".npz")]
         for i, f in enumerate(npz):
             print(f" {i}: {f}")
@@ -30,7 +38,7 @@ try:
         modely.train_rna(f"./datasets/{npz[file_index]}")
 
     # Executar modelo
-    elif choose == 2:
+    elif choose == 3:
         fsongs   = [f for f in os.listdir("songs")]
         for i, s in enumerate(fsongs):
             print(f" {i}: {s}")
@@ -39,14 +47,6 @@ try:
 
         if file_index <= i+1:
             predict.main(f"./songs/{fsongs[file_index]}")
-    
-    # Processar datasets
-    elif choose == 3:
-        input_path = input("Nome da pasta do dataset: ./datasets/")
-        base_dir_dataset = f"./datasets/{input_path}" if input_path else None 
-        aug = int(input("Usar augmentation para aumentar as informações? (1 - True, 0 - False) -> "))
-        
-        process_data.main(base_dir_dataset, augmentation=aug)
 
     else:
         raise Exception
